@@ -10,7 +10,7 @@ import {
     push
 } from 'firebase/database';
 
-// Твоя конфигурация Firebase (замени на свои данные)
+// Твоя конфигурация Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyA2hCxXsLcEWltXEw3sL6HyrzdSOYoMYFg",
     authDomain: "my-cooking-book-74cb2.firebaseapp.com",
@@ -25,83 +25,77 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
-// Путь к рецептам в базе данных
+// Путь к рецептам
 const RECIPES_PATH = '/';
 
-// ============ ФУНКЦИИ ДЛЯ РАБОТЫ С REALTIME DATABASE ============
+// ============ ВСЕ ФУНКЦИИ ДЛЯ РАБОТЫ С БАЗОЙ ============
 
 // 1. Получить все рецепты (один раз)
 export const fetchRecipes = async () => {
     try {
+        console.log('📊 Запрос к Firebase по пути:', RECIPES_PATH);
         const recipesRef = ref(database, RECIPES_PATH);
         const snapshot = await get(recipesRef);
-
-            console.log('📊 Данные из Firebase:', snapshot.val());
         
         if (snapshot.exists()) {
             const data = snapshot.val();
-
-            console.log('📊 Тип данных:', typeof data);
-            console.log('📊 Данные:', data);
-
-// Проверяем, что данные - это объект
+            
             if (typeof data === 'object' && data !== null) {
-
-            // Преобразуем объект в массив
-            const recipesList = Object.keys(data).map(key => ({
-                firebaseId: key,
-                ...data[key]
-            }));
-
-                console.log('✅ Преобразовано в массив:', recipesList.length, 'рецептов');
-
-            return recipesList;
-        } else {
-            console.warn('⚠️ Данные не являются объектом:', data);
-            return [];
+                const recipesList = Object.keys(data).map(key => ({
+                    firebaseId: key,
+                    ...data[key]
+                }));
+                console.log('✅ Загружено рецептов:', recipesList.length);
+                return recipesList;
+            }
         }
-    } else {
-      console.log('ℹ️ В базе данных нет рецептов');
-            return [];   
-    }
+        return [];
     } catch (error) {
-        console.error('Ошибка загрузки рецептов:', error);
+        console.error('❌ Ошибка загрузки рецептов:', error);
         return [];
     }
-
-// 2. Подписка на изменения в реальном времени
-try {
-        const unsubscribe = subscribeToRecipes((newRecipes) => {
-            console.log('🔄 Получены обновления из Firebase:', newRecipes);
-            
-            if (Array.isArray(newRecipes)) {
-                recipes = newRecipes;
-                if (onRecipesChange) {
-                    onRecipesChange(newRecipes);
-                }
-            } else {
-                console.warn('⚠️ Получены некорректные данные из Firebase:', newRecipes);
-            }
-        });
-        listeners.push(unsubscribe);
-
-        
-    } catch (error) {
-        console.error('❌ Ошибка подписки на изменения:', error);
-    }
-    
-    return () => {
-        listeners.forEach(unsubscribe => unsubscribe());
-        listeners = [];
-    };
 };
+
+// 2. ✅ ПОДПИСКА НА ИЗМЕНЕНИЯ (ЭТА ФУНКЦИЯ БЫЛА ПРОПУЩЕНА!)
+export const subscribeToRecipes = (callback) => {
+    console.log('🔗 Подписка на изменения в Firebase');
+    const recipesRef = ref(database, RECIPES_PATH);
+    
+    const unsubscribe = onValue(recipesRef, (snapshot) => {
+        console.log('🔄 Получены изменения из Firebase');
+        
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            
+            if (typeof data === 'object' && data !== null) {
+                const recipesList = Object.keys(data).map(key => ({
+                    firebaseId: key,
+                    ...data[key]
+                }));
+                console.log('✅ Обновлено:', recipesList.length, 'рецептов');
+                callback(recipesList);
+            } else {
+                callback([]);
+            }
+        } else {
+            console.log('ℹ️ В базе данных нет рецептов');
+            callback([]);
+        }
+    }, (error) => {
+        console.error('❌ Ошибка подписки:', error);
+        callback([]);
+    });
+    
+    return unsubscribe;
+};
+
 // 3. Добавить новый рецепт
 export const addRecipeToFirebase = async (recipeData) => {
     try {
+        console.log('➕ Добавление рецепта...', recipeData);
         const recipesRef = ref(database, RECIPES_PATH);
         const newRecipeRef = push(recipesRef);
         
-        // Получаем максимальный id для автоинкремента
         const recipes = await fetchRecipes();
         const maxId = recipes.reduce((max, r) => Math.max(max, parseInt(r.id) || 0), 0);
         
@@ -113,12 +107,15 @@ export const addRecipeToFirebase = async (recipeData) => {
         
         await set(newRecipeRef, newRecipe);
         
-        return {
+        const result = {
             firebaseId: newRecipeRef.key,
             ...newRecipe
         };
+        
+        console.log('✅ Рецепт добавлен:', result);
+        return result;
     } catch (error) {
-        console.error('Ошибка добавления рецепта:', error);
+        console.error('❌ Ошибка добавления рецепта:', error);
         throw error;
     }
 };
@@ -126,14 +123,23 @@ export const addRecipeToFirebase = async (recipeData) => {
 // 4. Обновить рецепт
 export const updateRecipeInFirebase = async (firebaseId, updatedData) => {
     try {
-        const recipeRef = ref(database, `${RECIPES_PATH}/${firebaseId}`);
+        console.log(`✏️ Обновление рецепта: ${firebaseId}`);
+        
+        if (!firebaseId) {
+            throw new Error('firebaseId обязателен для обновления');
+        }
+        
+        const recipeRef = ref(database, `${RECIPES_PATH}${firebaseId}`);
+        
         await update(recipeRef, {
             ...updatedData,
             updatedAt: new Date().toISOString()
         });
+        
+        console.log('✅ Рецепт обновлен');
         return true;
     } catch (error) {
-        console.error('Ошибка обновления рецепта:', error);
+        console.error('❌ Ошибка обновления рецепта:', error);
         throw error;
     }
 };
@@ -141,18 +147,21 @@ export const updateRecipeInFirebase = async (firebaseId, updatedData) => {
 // 5. Удалить рецепт
 export const deleteRecipeFromFirebase = async (firebaseId) => {
     try {
-        const recipeRef = ref(database, `${RECIPES_PATH}/${firebaseId}`);
+        console.log(`🗑️ Удаление рецепта: ${firebaseId}`);
+        const recipeRef = ref(database, `${RECIPES_PATH}${firebaseId}`);
         await remove(recipeRef);
+        console.log('✅ Рецепт удален');
         return true;
     } catch (error) {
-        console.error('Ошибка удаления рецепта:', error);
+        console.error('❌ Ошибка удаления рецепта:', error);
         throw error;
     }
 };
 
-// 6. Импортировать рецепты (для первого заполнения)
+// 6. Импортировать рецепты
 export const importRecipesToFirebase = async (recipesArray) => {
     try {
+        console.log('📥 Импорт рецептов...');
         const recipesRef = ref(database, RECIPES_PATH);
         let importedCount = 0;
         
@@ -165,11 +174,25 @@ export const importRecipesToFirebase = async (recipesArray) => {
             importedCount++;
             console.log(`✅ Импортирован: ${recipe.name}`);
         }
-        console.log(`✅ Успешно импортировано ${importedCount} рецептов`);
         
+        console.log(`✅ Успешно импортировано ${importedCount} рецептов`);
         return importedCount;
     } catch (error) {
-        console.error('Ошибка импорта:', error);
+        console.error('❌ Ошибка импорта:', error);
+        throw error;
+    }
+};
+
+// 7. Очистить все рецепты
+export const clearAllRecipes = async () => {
+    try {
+        console.log('🗑️ Очистка всех рецептов...');
+        const recipesRef = ref(database, RECIPES_PATH);
+        await set(recipesRef, null);
+        console.log('✅ Все рецепты удалены');
+        return true;
+    } catch (error) {
+        console.error('❌ Ошибка очистки:', error);
         throw error;
     }
 };

@@ -96,20 +96,35 @@ function AddRecipeForm({ onSave, onCancel }) {
     image: ''
   });
   
+  const [loading, setLoading] = useState(false);
+  
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
   
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
     if (!formData.name || !formData.recipe) {
       alert('Пожалуйста, заполните название и рецепт');
       return;
     }
-    onSave(formData);
+    
+    setLoading(true);
+    try {
+      console.log('➕ Добавление нового рецепта:', formData);
+      await onSave(formData);
+      console.log('✅ Рецепт добавлен!');
+    } catch (error) {
+      console.error('❌ Ошибка добавления:', error);
+      alert('Ошибка добавления. Попробуйте еще раз.');
+    } finally {
+      setLoading(false);
+    }
   };
   
   return (
@@ -131,7 +146,11 @@ function AddRecipeForm({ onSave, onCancel }) {
           
           <FormGroup>
             <label>Категория *</label>
-            <select name="ganre" value={formData.ganre} onChange={handleChange}>
+            <select 
+              name="ganre" 
+              value={formData.ganre} 
+              onChange={handleChange}
+            >
               <option value="breakfast">Завтрак</option>
               <option value="supper">Ужин</option>
               <option value="dinner">Обед</option>
@@ -161,8 +180,12 @@ function AddRecipeForm({ onSave, onCancel }) {
           </FormGroup>
           
           <ButtonGroup>
-            <Button type="button" onClick={onCancel}>Отмена</Button>
-            <Button type="submit" primary>Сохранить</Button>
+            <Button type="button" onClick={onCancel}>
+              Отмена
+            </Button>
+            <Button type="submit" primary disabled={loading}>
+              {loading ? 'Сохранение...' : 'Сохранить'}
+            </Button>
           </ButtonGroup>
         </form>
       </Modal>

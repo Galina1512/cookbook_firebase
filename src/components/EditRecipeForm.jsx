@@ -90,6 +90,7 @@ const Button = styled.button`
 
 function EditRecipeForm({ recipe, onSave, onCancel }) {
   const [formData, setFormData] = useState({
+    firebaseId: recipe.firebaseId || null, 
     id: recipe.id,
     name: recipe.name,
     recipe: recipe.recipe,
@@ -103,15 +104,41 @@ function EditRecipeForm({ recipe, onSave, onCancel }) {
       [e.target.name]: e.target.value
     });
   };
-  
-  const handleSubmit = (e) => {
+
+ const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.recipe) {
       alert('Пожалуйста, заполните название и рецепт');
       return;
     }
-    onSave(formData);
+    setLoading(true);
+    try {
+ // 🔴 ВАЖНО: передаем firebaseId, если он есть
+      const updateData = {
+        id: formData.id,
+        name: formData.name,
+        recipe: formData.recipe,
+        ganre: formData.ganre,
+        image: formData.image
+      };
+// Если есть firebaseId - передаем его
+      if (formData.firebaseId) {
+        updateData.firebaseId = formData.firebaseId;
+      }
+      
+
+      // Передаем все данные, включая firebaseId
+      await onSave(updateData);
+    } catch (error) {
+      console.error('Ошибка сохранения:', error);
+      alert('Ошибка сохранения. Попробуйте еще раз.');
+    } finally {
+      setLoading(false);
+    }
   };
+  
   
   return (
     <ModalOverlay onClick={onCancel}>

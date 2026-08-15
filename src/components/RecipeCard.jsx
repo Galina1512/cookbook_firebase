@@ -194,8 +194,12 @@ function RecipeCard({ recipe, onDelete, onUpdate }) {
   };
   
   const handleUpdate = (updatedRecipe) => {
-    onUpdate(updatedRecipe);
-    setShowEditForm(false);
+// Убеждаемся, что firebaseId передается
+    onUpdate({
+        ...updatedRecipe,
+        firebaseId: recipe.firebaseId // ← Явно передаем firebaseId
+    });
+        setShowEditForm(false);
   };
   
   const handleImageClick = (e) => {

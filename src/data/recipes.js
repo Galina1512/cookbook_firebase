@@ -5,7 +5,7 @@ import {
     addRecipeToFirebase, 
     updateRecipeInFirebase, 
     deleteRecipeFromFirebase,
-    // clearAllRecipes,
+    clearAllRecipes,
     fetchRecipes
 } from '../firebase';
 
@@ -48,31 +48,29 @@ export const initFirebaseSync = (onRecipesChange) => {
         }
     });
     
-    // Затем подписываемся на изменения в реальном времени
-//     try {
-//     const unsubscribe = subscribeToRecipes((newRecipes) => {
-//         console.log('🔄 Получены обновления из Firebase:', newRecipes);
-        
-//         // Проверяем, что данные - это массив
-//         if (Array.isArray(newRecipes)) {
-//             recipes = newRecipes;
-//             if (onRecipesChange) {
-//                 onRecipesChange(newRecipes);
-//             }
-//         } else {
-//             console.warn('⚠️ Получены некорректные данные из Firebase:', newRecipes);
-//         }
-//     });
+// Затем подписываемся на изменения в реальном времени
+    try {
+        const unsubscribe = subscribeToRecipes((newRecipes) => {
+            console.log('🔄 Получены обновления из Firebase:', newRecipes);
+            
+            if (Array.isArray(newRecipes)) {
+                recipes = newRecipes;
+                if (onRecipesChange) {
+                    onRecipesChange(newRecipes);
+                }
+            } else {
+                console.warn('⚠️ Получены некорректные данные из Firebase:', newRecipes);
+            }
+        });
+        listeners.push(unsubscribe);
+    } catch (error) {
+        console.error('❌ Ошибка подписки на изменения:', error);
+    }
     
-//     listeners.push(unsubscribe);
-// } catch (error) {
-//  console.error('❌ Ошибка подписки на изменения:', error);
-// }
-//  return () => {
-//         listeners.forEach(unsubscribe => unsubscribe());
-//         listeners = [];
-//     };
-    // return unsubscribe;
+    return () => {
+        listeners.forEach(unsubscribe => unsubscribe());
+        listeners = [];
+    };
 };
 
 // Получить все рецепты
@@ -120,6 +118,7 @@ export const addRecipe = async (newRecipe) => {
     try {
         const addedRecipe = await addRecipeToFirebase(newRecipe);
         console.log('✅ Рецепт добавлен:', addedRecipe);
+        recipes.push(addedRecipe);
         return addedRecipe;
     } catch (error) {
         console.error('❌ Ошибка добавления рецепта:', error);
@@ -130,8 +129,32 @@ export const addRecipe = async (newRecipe) => {
 // Обновление рецепта
 export const updateRecipe = async (updatedRecipe) => {
     try {
+         // Проверяем, есть ли firebaseId
+        if (!updatedRecipe.firebaseId) {
+            console.error('❌ Нет firebaseId для обновления');
+            console.log('📋 Данные рецепта:', updatedRecipe);
+  // Пытаемся найти firebaseId по id
+            const existingRecipe = recipes.find(r => String(r.id) === String(updatedRecipe.id));
+            if (existingRecipe && existingRecipe.firebaseId) {
+                console.log('🔍 Найден существующий рецепт с firebaseId:', existingRecipe.firebaseId);
+                updatedRecipe.firebaseId = existingRecipe.firebaseId;
+            } else {
+                throw new Error('Не найден firebaseId для обновления. Рецепт не существует в Firebase.');
+            }
+        }
+
         const { firebaseId, ...recipeData } = updatedRecipe;
-        await updateRecipeInFirebase(firebaseId, recipeData);
+
+
+        await updateRecipeInFirebase(firebaseId, {
+            ...recipeData,
+            updatedAt: new Date().toISOString()
+    });
+ const index = recipes.findIndex(r => r.firebaseId === firebaseId);
+        if (index !== -1) {
+            recipes[index] = { ...recipes[index], ...updatedRecipe };
+        }
+        
         console.log('✅ Рецепт обновлен:', updatedRecipe.name);
         return true;
     } catch (error) {
