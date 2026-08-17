@@ -12,13 +12,13 @@ import {
 
 // Твоя конфигурация Firebase
 const firebaseConfig = {
-    apiKey: "AIzaSyA2hCxXsLcEWltXEw3sL6HyrzdSOYoMYFg",
-    authDomain: "my-cooking-book-74cb2.firebaseapp.com",
-    databaseURL: "https://my-cooking-book-74cb2-default-rtdb.firebaseio.com",
-    projectId: "my-cooking-book-74cb2",
-    storageBucket: "my-cooking-book-74cb2.appspot.com",
-    messagingSenderId: "1234567890",
-    appId: "1:1234567890:web:abcdef123456"
+apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+    authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+    databaseURL: process.env.REACT_APP_FIREBASE_DATABASE_URL,
+    projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.REACT_APP_FIREBASE_APP_ID
 };
 
 // Инициализация Firebase
