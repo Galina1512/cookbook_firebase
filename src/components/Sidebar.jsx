@@ -151,9 +151,16 @@ const MenuButton = styled.button`
   border-radius: 12px;
   font-size: 24px;
   cursor: pointer;
-  
-  @media (max-width: 768px) {
-    display: block;
+
+@media (max-width: 768px) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, background 0.2s ease; 
+    &:active {
+    transform: scale(0.95); /* При нажатии кнопка чуть сжимается */
+  }
+
   }
 `;
 
@@ -192,7 +199,9 @@ function Sidebar({ categories, selectedCategory, onCategoryChange, searchTerm, o
   
   return (
     <>
-      <MenuButton onClick={() => setIsOpen(!isOpen)}>☰</MenuButton>
+      <MenuButton onClick={() => setIsOpen(!isOpen)}>
+        {isOpen ? 'X' : '☰'}
+        </MenuButton>
       <SidebarContainer $isOpen={isOpen}>
         <Logo>
           <span>📖</span>
