@@ -59,6 +59,67 @@ const FormGroup = styled.div`
   }
 `;
 
+const FileUploadArea = styled.div`
+  margin-bottom: 20px;
+`;
+
+const FileLabel = styled.label`
+  display: block;
+  width: 100%;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: center;
+  border: 2px dashed #ccc;
+  transition: all 0.3s ease;
+  color: #666;
+  font-size: 14px;
+  
+  &:hover {
+    border-color: #ff6b35;
+    background: #fff8f5;
+  }
+`;
+
+const HiddenInput = styled.input`
+  display: none;
+`;
+
+const PreviewContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  margin-top: 15px;
+  position: relative;
+`;
+
+const PreviewImage = styled.img`
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+`;
+
+const RemoveImageButton = styled.button`
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  
+  &:hover {
+    background: #cc0000;
+  }
+`;
+
 const ButtonGroup = styled.div`
   display: flex;
   gap: 10px;
@@ -89,21 +150,38 @@ const Button = styled.button`
 `;
 
 function AddRecipeForm({ onSave, onCancel }) {
+  // Стейт для текстовых полей
   const [formData, setFormData] = useState({
     name: '',
     recipe: '',
     ganre: 'breakfast',
-    image: ''
+    // image: '' // Больше не нужен, заменяем на файл
   });
   
+  // Стейт для хранения выбранного файла картинки
+  const [imageFile, setImageFile] = useState(null);
   const [loading, setLoading] = useState(false);
   
+  // Обработка текстовых полей
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
+  };
+
+  // Обработка выбора файла картинки
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImageFile(file);
+    }
+  };
+
+  // Удалить выбранную картинку
+  const handleRemoveImage = () => {
+    setImageFile(null);
   };
   
   const handleSubmit = async (e) => {
@@ -116,8 +194,9 @@ function AddRecipeForm({ onSave, onCancel }) {
     
     setLoading(true);
     try {
-      console.log('➕ Добавление нового рецепта:', formData);
-      await onSave(formData);
+      // Передаем в onSave два объекта: данные рецепта и сам файл картинки
+      console.log('➕ Добавление нового рецепта:', formData, 'Файл:', imageFile);
+      await onSave(formData, imageFile);
       console.log('✅ Рецепт добавлен!');
     } catch (error) {
       console.error('❌ Ошибка добавления:', error);
@@ -169,15 +248,34 @@ function AddRecipeForm({ onSave, onCancel }) {
             />
           </FormGroup>
           
-          <FormGroup>
-            <label>Ссылка на изображение (необязательно)</label>
-            <input
-              name="image"
-              value={formData.image}
-              onChange={handleChange}
-              placeholder="https://example.com/photo.jpg"
-            />
-          </FormGroup>
+          {/* --- НОВЫЙ БЛОК ЗАГРУЗКИ КАРТИНКИ --- */}
+          <FileUploadArea>
+            <label style={{ display: 'block', marginBottom: '8px', color: '#666', fontWeight: 500 }}>
+              Изображение (необязательно)
+            </label>
+            
+            {!imageFile ? (
+              <FileLabel>
+                🖼️ Нажмите, чтобы выбрать фото
+                <HiddenInput 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleFileChange} 
+                />
+              </FileLabel>
+            ) : (
+              <PreviewContainer>
+                <PreviewImage 
+                  src={URL.createObjectURL(imageFile)} 
+                  alt="Превью рецепта" 
+                />
+                <RemoveImageButton type="button" onClick={handleRemoveImage}>
+                  ✕
+                </RemoveImageButton>
+              </PreviewContainer>
+            )}
+          </FileUploadArea>
+          {/* --- КОНЕЦ БЛОКА --- */}
           
           <ButtonGroup>
             <Button type="button" onClick={onCancel}>

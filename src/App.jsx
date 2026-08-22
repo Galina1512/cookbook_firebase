@@ -12,6 +12,7 @@ import {
     addRecipe, 
     updateRecipe 
 } from './data/recipes';
+import { uploadRecipeImage, deleteRecipeImage } from './firebase'; 
 import './App.css';
 
 const AppContainer = styled.div`
@@ -187,23 +188,57 @@ function App() {
     setSelectedCategory(category);
   };
   
-  const handleAddRecipe = async (newRecipe) => {
+  const handleAddRecipe = async (recipeData, imageFile) => {
     try {
       setLoading(true);
-      await addRecipe(newRecipe);
-      setShowAddForm(false);
+
+      const savedRecipe = await addRecipe(recipeData); 
+      
+      if (imageFile && savedRecipe && savedRecipe.firebaseId) {
+        const newImageUrl = await uploadRecipeImage(imageFile, savedRecipe.firebaseId);
+    
+        const updatedRecipeData = {
+          ...recipeData, 
+          imageUrl: newImageUrl
+        };
+        await updateRecipe({
+          ...updatedRecipeData, firebaseId: savedRecipe.firebaseId
+      }); 
+    }
+      
+    setShowAddForm(false);
     } catch (error) {
       console.error('Ошибка добавления:', error);
       alert('Ошибка добавления рецепта. Проверьте консоль.');
     } finally {
       setLoading(false);
-    }
   };
+}
   
-  const handleUpdateRecipe = async (updatedRecipe) => {
+    const handleUpdateRecipe = async (formData, imageFile) => {
     try {
       setLoading(true);
-      await updateRecipe(updatedRecipe);
+      
+      const { firebaseId, image } = formData; // image - это ссылка из текстового поля
+      
+      if (!firebaseId) {
+        throw new Error('Не найден firebaseId для обновления');
+      }
+
+      // Проверяем, загрузили ли мы новый файл
+      if (imageFile) {
+        // Загружаем файл в Storage (он автоматически перезапишет старый файл по этому ID)
+        const newImageUrl = await uploadRecipeImage(imageFile, firebaseId);
+        
+        // Обновляем текстовые данные, заменяя ссылку на новую
+        const updatedData = { ...formData, imageUrl: newImageUrl };
+        await updateRecipe(updatedData);
+      } else {
+        // Если файл не меняли, просто обновляем текстовые данные.
+        // Если пользователь удалил ссылку вручную в поле, она удалится и из базы.
+        await updateRecipe(formData);
+      }
+      
     } catch (error) {
       console.error('Ошибка обновления:', error);
       alert('Ошибка обновления рецепта. Проверьте консоль.');
@@ -211,11 +246,14 @@ function App() {
       setLoading(false);
     }
   };
-  
-  const handleDeleteRecipe = async (id) => {
+
+  const handleDeleteRecipe = async (id, imageUrl) => {
     if (window.confirm('Удалить рецепт?')) {
       try {
         setLoading(true);
+      if (imageUrl) {
+          await deleteRecipeImage(imageUrl);
+        }
         await deleteRecipe(id);
       } catch (error) {
         console.error('Ошибка удаления:', error);

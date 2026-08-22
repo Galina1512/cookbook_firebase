@@ -9,6 +9,13 @@ import {
     onValue,
     push
 } from 'firebase/database';
+import { 
+    getStorage, 
+    ref as storageRef,  // Переименовываем ref для Storage, чтобы не путать с БД
+    uploadBytes, 
+    getDownloadURL,
+    deleteObject
+} from 'firebase/storage';
 
 // Твоя конфигурация Firebase
 const firebaseConfig = {
@@ -56,7 +63,7 @@ export const fetchRecipes = async () => {
     }
 };
 
-// 2. ✅ ПОДПИСКА НА ИЗМЕНЕНИЯ (ЭТА ФУНКЦИЯ БЫЛА ПРОПУЩЕНА!)
+// 2. ✅ ПОДПИСКА НА ИЗМЕНЕНИЯ
 export const subscribeToRecipes = (callback) => {
     console.log('🔗 Подписка на изменения в Firebase');
     const recipesRef = ref(database, RECIPES_PATH);
@@ -197,4 +204,43 @@ export const clearAllRecipes = async () => {
     }
 };
 
+// 8. Загрузка картинки в Storage и получение ссылки
+export const uploadRecipeImage = async (file, recipeFirebaseId) => {
+    if (!file) return null; // Если файла нет, возвращаем null
+
+    try {
+        // Создаем уникальный путь для картинки: recipes/ID-рецепта/имя-файла
+        const imagePath = `recipes/${recipeFirebaseId}/${file.name}`;
+        const imageRef = storageRef(storage, imagePath);
+        
+        // Загружаем файл в Storage
+        console.log(`📤 Загрузка картинки: ${file.name}...`);
+        await uploadBytes(imageRef, file);
+        
+        // Получаем прямую ссылку на картинку
+        const downloadURL = await getDownloadURL(imageRef);
+        console.log('✅ Картинка загружена, ссылка получена:', downloadURL);
+        
+        return downloadURL;
+    } catch (error) {
+        console.error('❌ Ошибка загрузки картинки:', error);
+        throw error; // Пробрасываем ошибку наверх
+    }
+};
+
+// 9. Удаление картинки из Storage
+export const deleteRecipeImage = async (imageUrl) => {
+    if (!imageUrl) return; // Если нет ссылки, выходим
+
+    try {
+        // Создаем ссылку на файл по его URL
+        const imageRef = storageRef(storage, imageUrl);
+        await deleteObject(imageRef);
+        console.log('✅ Картинка удалена из Storage');
+    } catch (error) {
+        console.error('❌ Ошибка удаления картинки:', error);
+    }
+};
+
+export const storage = getStorage(app);
 export default database;

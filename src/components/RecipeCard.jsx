@@ -254,7 +254,7 @@ function RecipeCard({ recipe, onDelete, onUpdate }) {
           </IconButton>
           <IconButton onClick={(e) => {
             e.stopPropagation();
-            onDelete(recipe.id);
+            onDelete(recipe.firebaseId, recipe.imageUrl);
           }} 
           title="Удалить">
             ×
